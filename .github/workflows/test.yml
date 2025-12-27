@@ -1,0 +1,22 @@
+name: test
+
+on:
+  push:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1.20.4
+        with:
+          otp-version: "28"
+          gleam-version: "1.13.0"
+          rebar3-version: "3"
+          # elixir-version: "1"
+      - run: gleam deps download
+      - run: gleam test
+      - run: gleam format --check src test
