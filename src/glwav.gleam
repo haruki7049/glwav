@@ -1,5 +1,5 @@
 pub type Wave {
-  Wave(sample_rate: Int, channels: Int, bits: Bits, samples: List(Int))
+  Wave(sample_rate: Int, channels: Int, bits: Bits, samples: List(Float))
 }
 
 pub type Bits {
