@@ -1,13 +1,22 @@
 import gleeunit
+import gleeunit/should
+import glwav
+
+import simplifile
 
 pub fn main() -> Nil {
   gleeunit.main()
 }
 
-// gleeunit test functions end in `_test`
-pub fn hello_world_test() {
-  let name = "Joe"
-  let greeting = "Hello, " <> name <> "!"
+pub fn load_wavefile_test() {
+  let assert Ok(wavefile): Result(BitArray, simplifile.FileError) =
+    simplifile.read_bits(from: "test/assets/test_data.wav")
+  let wave: glwav.Wave =
+    wavefile
+    |> glwav.from_bit_array()
+  let expected: glwav.Wave =
+    glwav.Wave(sample_rate: 44_100, channels: 1, bits: glwav.I16, samples: [])
 
-  assert greeting == "Hello, Joe!"
+  wave
+  |> should.equal(expected)
 }

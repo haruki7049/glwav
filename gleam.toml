@@ -9,9 +9,11 @@ repository = { type = "github", user = "haruki7049", repo = "glwav" }
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
+glriff = { git = "https://github.com/haruki7049/glriff.git", ref = "main" }
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
+simplifile = ">= 2.3.2 and < 3.0.0"
 
 [javascript]
 typescript_declarations = true
