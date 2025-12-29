@@ -69,12 +69,7 @@ pub type FormatCode {
 /// Represents the data contained in a WAV chunk.
 pub type ChunkData {
   /// Format chunk containing audio properties
-  Fmt(
-    format_code: FormatCode,
-    sample_rate: Int,
-    channels: Int,
-    bits: Bits,
-  )
+  Fmt(format_code: FormatCode, sample_rate: Int, channels: Int, bits: Bits)
   /// Data chunk containing the actual audio samples
   Data(data_bits: BitArray)
 }
@@ -121,12 +116,7 @@ pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
 
       case chunk_data {
         [
-          Ok(Fmt(
-            format_code,
-            sample_rate,
-            channels,
-            bits,
-          )),
+          Ok(Fmt(format_code, sample_rate, channels, bits)),
           Ok(Data(data_bits)),
           ..
         ] -> {
@@ -189,12 +179,7 @@ fn read_fmt_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
 
   use bits: Bits <- result.try(bits_bits |> convert_bits())
 
-  Ok(Fmt(
-    format_code,
-    sample_rate,
-    channels,
-    bits,
-  ))
+  Ok(Fmt(format_code, sample_rate, channels, bits))
 }
 
 fn convert_format_code(bits: BitArray) -> Result(FormatCode, ReadChunkError) {
