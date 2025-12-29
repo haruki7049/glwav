@@ -13,17 +13,19 @@ import glriff
 /// - `sample_rate`: Sample rate in Hz (e.g., 44100, 48000)
 /// - `channels`: Number of audio channels (1 for mono, 2 for stereo)
 /// - `bits`: Bit depth of samples
-/// - `bytes_per_second`: Average bytes per second (sample_rate * block_align)
-/// - `block_align`: Bytes per sample frame (channels * bits_per_sample / 8)
 /// - `samples`: Normalized audio samples as floating point values (-1.0 to 1.0)
+///
+/// ## Note
+///
+/// `bytes_per_second` and `block_align` are calculated automatically from other fields:
+/// - `block_align` = `channels * (bits_per_sample / 8)`
+/// - `bytes_per_second` = `sample_rate * block_align`
 pub type Wave {
   Wave(
     format_code: FormatCode,
     sample_rate: Int,
     channels: Int,
     bits: Bits,
-    bytes_per_second: Int,
-    block_align: Int,
     samples: List(Float),
   )
 }
@@ -121,14 +123,7 @@ pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
 
       case chunk_data {
         [
-          Ok(Fmt(
-            format_code,
-            sample_rate,
-            channels,
-            bytes_per_second,
-            block_align,
-            bits,
-          )),
+          Ok(Fmt(format_code, sample_rate, channels, _bytes_per_second, _block_align, bits)),
           Ok(Data(data_bits)),
           ..
         ] -> {
@@ -144,8 +139,6 @@ pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
             sample_rate: sample_rate,
             channels: channels,
             bits: bits,
-            bytes_per_second: bytes_per_second,
-            block_align: block_align,
             samples: samples,
           ))
         }
@@ -331,6 +324,10 @@ fn do_parse_f32_samples(data: BitArray, acc: List(Float)) -> List(Float) {
 /// Samples are converted from normalized floating point values (-1.0 to 1.0)
 /// to the appropriate bit depth specified in the Wave structure.
 ///
+/// The `bytes_per_second` and `block_align` values are calculated automatically:
+/// - `block_align` = `channels * (bits_per_sample / 8)`
+/// - `bytes_per_second` = `sample_rate * block_align`
+///
 /// ## Example
 ///
 /// ```gleam
@@ -339,8 +336,6 @@ fn do_parse_f32_samples(data: BitArray, acc: List(Float)) -> List(Float) {
 ///   sample_rate: 44_100,
 ///   channels: 1,
 ///   bits: glwav.I16,
-///   bytes_per_second: 88_200,
-///   block_align: 2,
 ///   samples: [0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0],
 /// )
 /// let bits = glwav.to_bit_array(wave)
@@ -352,6 +347,16 @@ fn do_parse_f32_samples(data: BitArray, acc: List(Float)) -> List(Float) {
 ///
 /// A bit array containing the complete WAV file data
 pub fn to_bit_array(wave: Wave) -> BitArray {
+  // Calculate block_align and bytes_per_second from other fields
+  let bits_per_sample = case wave.bits {
+    U8 -> 8
+    I16 -> 16
+    I24 -> 24
+    F32 -> 32
+  }
+  let block_align = wave.channels * bits_per_sample / 8
+  let bytes_per_second = wave.sample_rate * block_align
+
   // Convert samples to binary data based on bit depth
   let data_bits = case wave.bits {
     U8 -> samples_to_u8(wave.samples)
@@ -369,20 +374,13 @@ pub fn to_bit_array(wave: Wave) -> BitArray {
     Extensible -> <<65_534:size(16)-little>>
   }
 
-  let bits_value = case wave.bits {
-    U8 -> 8
-    I16 -> 16
-    I24 -> 24
-    F32 -> 32
-  }
-
   let fmt_data = <<
     format_code_bits:bits,
     wave.channels:size(16)-little,
     wave.sample_rate:size(32)-little,
-    wave.bytes_per_second:size(32)-little,
-    wave.block_align:size(16)-little,
-    bits_value:size(16)-little,
+    bytes_per_second:size(32)-little,
+    block_align:size(16)-little,
+    bits_per_sample:size(16)-little,
   >>
 
   let fmt_chunk = <<

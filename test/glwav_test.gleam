@@ -17,8 +17,6 @@ pub fn make_wavefile_test() {
       sample_rate: 44_100,
       channels: 1,
       bits: glwav.I16,
-      bytes_per_second: 88_200,
-      block_align: 2,
       samples: [
         0.0,
         0.02508544921875,
@@ -51,8 +49,6 @@ pub fn load_wavefile_test() {
         sample_rate: 44_100,
         channels: 1,
         bits: glwav.I16,
-        bytes_per_second: 88_200,
-        block_align: 2,
         samples: [
           0.0,
           0.02508544921875,
