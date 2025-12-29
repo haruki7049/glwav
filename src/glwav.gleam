@@ -123,7 +123,14 @@ pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
 
       case chunk_data {
         [
-          Ok(Fmt(format_code, sample_rate, channels, _bytes_per_second, _block_align, bits)),
+          Ok(Fmt(
+            format_code,
+            sample_rate,
+            channels,
+            _bytes_per_second,
+            _block_align,
+            bits,
+          )),
           Ok(Data(data_bits)),
           ..
         ] -> {
