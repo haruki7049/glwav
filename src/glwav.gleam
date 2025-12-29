@@ -73,8 +73,6 @@ pub type ChunkData {
     format_code: FormatCode,
     sample_rate: Int,
     channels: Int,
-    bytes_per_second: Int,
-    block_align: Int,
     bits: Bits,
   )
   /// Data chunk containing the actual audio samples
@@ -127,8 +125,6 @@ pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
             format_code,
             sample_rate,
             channels,
-            _bytes_per_second,
-            _block_align,
             bits,
           )),
           Ok(Data(data_bits)),
@@ -179,14 +175,6 @@ fn read_fmt_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
     data |> bit_array.slice(4, 4) |> result.replace_error(InvalidSampleRate),
   )
 
-  use bytes_per_second_bits: BitArray <- result.try(
-    data |> bit_array.slice(8, 4) |> result.replace_error(InvalidBytesPerSecond),
-  )
-
-  use block_align_bits: BitArray <- result.try(
-    data |> bit_array.slice(12, 2) |> result.replace_error(InvalidBlockAlign),
-  )
-
   use bits_bits: BitArray <- result.try(
     data |> bit_array.slice(14, 2) |> result.replace_error(InvalidBits),
   )
@@ -199,20 +187,12 @@ fn read_fmt_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
 
   use sample_rate: Int <- result.try(sample_rate_bits |> convert_sample_rate())
 
-  use bytes_per_second: Int <- result.try(
-    bytes_per_second_bits |> convert_bytes_per_second(),
-  )
-
-  use block_align: Int <- result.try(block_align_bits |> convert_block_align())
-
   use bits: Bits <- result.try(bits_bits |> convert_bits())
 
   Ok(Fmt(
     format_code,
     sample_rate,
     channels,
-    bytes_per_second,
-    block_align,
     bits,
   ))
 }
@@ -235,20 +215,6 @@ fn convert_sample_rate(bits: BitArray) -> Result(Int, ReadChunkError) {
   case bits {
     <<val:size(32)-little>> -> Ok(val)
     _ -> Error(InvalidSampleRate)
-  }
-}
-
-fn convert_bytes_per_second(bits: BitArray) -> Result(Int, ReadChunkError) {
-  case bits {
-    <<val:size(32)-little>> -> Ok(val)
-    _ -> Error(InvalidBytesPerSecond)
-  }
-}
-
-fn convert_block_align(bits: BitArray) -> Result(Int, ReadChunkError) {
-  case bits {
-    <<val:size(16)-little>> -> Ok(val)
-    _ -> Error(InvalidBlockAlign)
   }
 }
 
