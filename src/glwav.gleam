@@ -1,3 +1,4 @@
+import gleam/float
 import gleam/bit_array
 import gleam/int
 import gleam/list
@@ -275,5 +276,117 @@ fn do_parse_f32_samples(data: BitArray, acc: List(Float)) -> List(Float) {
 }
 
 pub fn to_bit_array(wave: Wave) -> BitArray {
-  todo
+  // Convert samples to binary data based on bit depth
+  let data_bits = case wave.bits {
+    U8 -> samples_to_u8(wave.samples)
+    I16 -> samples_to_i16(wave.samples)
+    I24 -> samples_to_i24(wave.samples)
+    F32 -> samples_to_f32(wave.samples)
+  }
+
+  // Create fmt chunk
+  let format_code_bits = case wave.format_code {
+    PCM -> <<1:size(16)-little>>
+    IeeeFloat -> <<3:size(16)-little>>
+    Alaw -> <<6:size(16)-little>>
+    Mulaw -> <<7:size(16)-little>>
+    Extensible -> <<65534:size(16)-little>>
+  }
+
+  let bits_value = case wave.bits {
+    U8 -> 8
+    I16 -> 16
+    I24 -> 24
+    F32 -> 32
+  }
+
+  let fmt_data =
+    <<
+      format_code_bits:bits,
+      wave.channels:size(16)-little,
+      wave.sample_rate:size(32)-little,
+      wave.bytes_per_second:size(32)-little,
+      wave.block_align:size(16)-little,
+      bits_value:size(16)-little,
+    >>
+
+  let fmt_chunk =
+    <<
+      "fmt ":utf8,
+      16:size(32)-little,
+      fmt_data:bits,
+    >>
+
+  // Create data chunk
+  let data_size = bit_array.byte_size(data_bits)
+  let data_chunk =
+    <<
+      "data":utf8,
+      data_size:size(32)-little,
+      data_bits:bits,
+    >>
+
+  // Create RIFF header
+  let chunks = <<fmt_chunk:bits, data_chunk:bits>>
+  let riff_size = bit_array.byte_size(chunks) + 4
+  <<
+    "RIFF":utf8,
+    riff_size:size(32)-little,
+    "WAVE":utf8,
+    chunks:bits,
+  >>
+}
+
+fn samples_to_u8(samples: List(Float)) -> BitArray {
+  samples
+  |> list.reverse()
+  |> list.fold(<<>>, fn(acc, sample) {
+    let value = { sample *. 128.0 +. 128.0 }
+    let int_value = case value {
+      v if v <. 0.0 -> 0
+      v if v >. 255.0 -> 255
+      v -> float_to_int(v)
+    }
+    <<acc:bits, int_value:size(8)>>
+  })
+}
+
+fn samples_to_i16(samples: List(Float)) -> BitArray {
+  samples
+  |> list.reverse()
+  |> list.fold(<<>>, fn(acc, sample) {
+    let value = sample *. 32_768.0
+    let int_value = case value {
+      v if v <. -32_768.0 -> -32_768
+      v if v >. 32_767.0 -> 32_767
+      v -> float_to_int(v)
+    }
+    <<acc:bits, int_value:size(16)-little>>
+  })
+}
+
+fn samples_to_i24(samples: List(Float)) -> BitArray {
+  samples
+  |> list.reverse()
+  |> list.fold(<<>>, fn(acc, sample) {
+    let value = sample *. 8_388_608.0
+    let int_value = case value {
+      v if v <. -8_388_608.0 -> -8_388_608
+      v if v >. 8_388_607.0 -> 8_388_607
+      v -> float_to_int(v)
+    }
+    <<acc:bits, int_value:size(24)-little>>
+  })
+}
+
+fn samples_to_f32(samples: List(Float)) -> BitArray {
+  samples
+  |> list.reverse()
+  |> list.fold(<<>>, fn(acc, sample) {
+    <<acc:bits, sample:size(32)-float-little>>
+  })
+}
+
+fn float_to_int(f: Float) -> Int {
+  float.round(f)
 }
