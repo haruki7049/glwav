@@ -1,5 +1,5 @@
-import gleam/float
 import gleam/bit_array
+import gleam/float
 import gleam/int
 import gleam/list
 import gleam/result
@@ -290,7 +290,7 @@ pub fn to_bit_array(wave: Wave) -> BitArray {
     IeeeFloat -> <<3:size(16)-little>>
     Alaw -> <<6:size(16)-little>>
     Mulaw -> <<7:size(16)-little>>
-    Extensible -> <<65534:size(16)-little>>
+    Extensible -> <<65_534:size(16)-little>>
   }
 
   let bits_value = case wave.bits {
@@ -300,31 +300,28 @@ pub fn to_bit_array(wave: Wave) -> BitArray {
     F32 -> 32
   }
 
-  let fmt_data =
-    <<
-      format_code_bits:bits,
-      wave.channels:size(16)-little,
-      wave.sample_rate:size(32)-little,
-      wave.bytes_per_second:size(32)-little,
-      wave.block_align:size(16)-little,
-      bits_value:size(16)-little,
-    >>
+  let fmt_data = <<
+    format_code_bits:bits,
+    wave.channels:size(16)-little,
+    wave.sample_rate:size(32)-little,
+    wave.bytes_per_second:size(32)-little,
+    wave.block_align:size(16)-little,
+    bits_value:size(16)-little,
+  >>
 
-  let fmt_chunk =
-    <<
-      "fmt ":utf8,
-      16:size(32)-little,
-      fmt_data:bits,
-    >>
+  let fmt_chunk = <<
+    "fmt ":utf8,
+    16:size(32)-little,
+    fmt_data:bits,
+  >>
 
   // Create data chunk
   let data_size = bit_array.byte_size(data_bits)
-  let data_chunk =
-    <<
-      "data":utf8,
-      data_size:size(32)-little,
-      data_bits:bits,
-    >>
+  let data_chunk = <<
+    "data":utf8,
+    data_size:size(32)-little,
+    data_bits:bits,
+  >>
 
   // Create RIFF header
   let chunks = <<fmt_chunk:bits, data_chunk:bits>>
@@ -340,7 +337,9 @@ pub fn to_bit_array(wave: Wave) -> BitArray {
 fn samples_to_u8(samples: List(Float)) -> BitArray {
   samples
   |> list.fold(<<>>, fn(acc, sample) {
-    let value = { sample *. 128.0 +. 128.0 }
+    let value = {
+      sample *. 128.0 +. 128.0
+    }
     let int_value = case value {
       v if v <. 0.0 -> 0
       v if v >. 255.0 -> 255
