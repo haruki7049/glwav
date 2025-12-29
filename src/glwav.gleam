@@ -68,7 +68,6 @@ pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
           }
         })
 
-      // from_bit_array 関数の todo 部分
       case chunk_data {
         [
           Ok(Fmt(
