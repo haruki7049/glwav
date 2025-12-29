@@ -337,9 +337,8 @@ pub fn to_bit_array(wave: Wave) -> BitArray {
 fn samples_to_u8(samples: List(Float)) -> BitArray {
   samples
   |> list.fold(<<>>, fn(acc, sample) {
-    let value = {
-      sample *. 128.0 +. 128.0
-    }
+    let value = sample *. 128.0 +. 128.0
+
     let int_value = case value {
       v if v <. 0.0 -> 0
       v if v >. 255.0 -> 255
