@@ -5,6 +5,17 @@ import gleam/list
 import gleam/result
 import glriff
 
+/// Represents a WAV audio file with its properties and sample data.
+///
+/// ## Fields
+///
+/// - `format_code`: The audio format (PCM, IEEE Float, etc.)
+/// - `sample_rate`: Sample rate in Hz (e.g., 44100, 48000)
+/// - `channels`: Number of audio channels (1 for mono, 2 for stereo)
+/// - `bits`: Bit depth of samples
+/// - `bytes_per_second`: Average bytes per second (sample_rate * block_align)
+/// - `block_align`: Bytes per sample frame (channels * bits_per_sample / 8)
+/// - `samples`: Normalized audio samples as floating point values (-1.0 to 1.0)
 pub type Wave {
   Wave(
     format_code: FormatCode,
@@ -17,6 +28,12 @@ pub type Wave {
   )
 }
 
+/// Represents the bit depth of audio samples.
+///
+/// - `U8`: 8-bit unsigned samples
+/// - `I16`: 16-bit signed samples (most common)
+/// - `I24`: 24-bit signed samples
+/// - `F32`: 32-bit floating point samples
 pub type Bits {
   U8
   I16
@@ -24,11 +41,21 @@ pub type Bits {
   F32
 }
 
+/// Errors that can occur when parsing a WAV file from a bit array.
 pub type FromBitArrayError {
+  /// The underlying RIFF format is invalid or corrupted
   RiffFormatError(inner: glriff.FromBitArrayError)
+  /// The WAV format is invalid (missing chunks, incorrect structure, etc.)
   InvalidFormat
 }
 
+/// Represents the audio encoding format.
+///
+/// - `PCM`: Pulse Code Modulation (uncompressed)
+/// - `IeeeFloat`: IEEE floating point format
+/// - `Alaw`: A-law logarithmic encoding
+/// - `Mulaw`: μ-law logarithmic encoding
+/// - `Extensible`: Extensible format with additional metadata
 pub type FormatCode {
   PCM
   IeeeFloat
@@ -37,7 +64,9 @@ pub type FormatCode {
   Extensible
 }
 
+/// Represents the data contained in a WAV chunk.
 pub type ChunkData {
+  /// Format chunk containing audio properties
   Fmt(
     format_code: FormatCode,
     sample_rate: Int,
@@ -46,9 +75,31 @@ pub type ChunkData {
     block_align: Int,
     bits: Bits,
   )
+  /// Data chunk containing the actual audio samples
   Data(data_bits: BitArray)
 }
 
+/// Parse a WAV file from a bit array.
+///
+/// Reads a WAV file in RIFF format and extracts all audio properties
+/// and samples. Samples are normalized to floating point values in the
+/// range -1.0 to 1.0.
+///
+/// ## Example
+///
+/// ```gleam
+/// let assert Ok(bits) = simplifile.read_bits("audio.wav")
+/// let assert Ok(wave) = glwav.from_bit_array(bits)
+/// // Access wave properties
+/// wave.sample_rate  // e.g., 44100
+/// wave.channels     // e.g., 2
+/// wave.samples      // List of normalized samples
+/// ```
+///
+/// ## Returns
+///
+/// - `Ok(Wave)` if parsing succeeds
+/// - `Error(FromBitArrayError)` if the file is invalid or unsupported
 pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
   use riff_chunk: glriff.Chunk <- result.try(
     bits |> glriff.from_bit_array() |> result.map_error(RiffFormatError),
@@ -274,6 +325,32 @@ fn do_parse_f32_samples(data: BitArray, acc: List(Float)) -> List(Float) {
   }
 }
 
+/// Convert a Wave structure to a bit array in WAV format.
+///
+/// Creates a complete WAV file including RIFF header, fmt chunk, and data chunk.
+/// Samples are converted from normalized floating point values (-1.0 to 1.0)
+/// to the appropriate bit depth specified in the Wave structure.
+///
+/// ## Example
+///
+/// ```gleam
+/// let wave = glwav.Wave(
+///   format_code: glwav.PCM,
+///   sample_rate: 44_100,
+///   channels: 1,
+///   bits: glwav.I16,
+///   bytes_per_second: 88_200,
+///   block_align: 2,
+///   samples: [0.0, 0.5, 1.0, 0.5, 0.0, -0.5, -1.0],
+/// )
+/// let bits = glwav.to_bit_array(wave)
+/// // Write to file
+/// simplifile.write_bits(bits, "output.wav")
+/// ```
+///
+/// ## Returns
+///
+/// A bit array containing the complete WAV file data
 pub fn to_bit_array(wave: Wave) -> BitArray {
   // Convert samples to binary data based on bit depth
   let data_bits = case wave.bits {
