@@ -121,7 +121,7 @@ fn read_fmt_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
   )
 
   use channels_bits: BitArray <- result.try(
-    data |> bit_array.slice(2, 4) |> result.replace_error(InvalidChannels),
+    data |> bit_array.slice(2, 2) |> result.replace_error(InvalidChannels),
   )
 
   use sample_rate_bits: BitArray <- result.try(
@@ -158,8 +158,8 @@ fn read_fmt_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
 
   Ok(Fmt(
     format_code,
-    channels,
     sample_rate,
+    channels,
     bytes_per_second,
     block_align,
     bits,
@@ -168,42 +168,42 @@ fn read_fmt_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
 
 fn convert_format_code(bits: BitArray) -> Result(FormatCode, ReadChunkError) {
   case bits {
-    <<1:size(4)-little>> -> Ok(PCM)
+    <<1:size(16)-little>> -> Ok(PCM)
     _ -> Error(NotSupported)
   }
 }
 
 fn convert_channels(bits: BitArray) -> Result(Int, ReadChunkError) {
   case bits {
-    <<val:little>> -> Ok(val)
+    <<val:size(16)-little>> -> Ok(val)
     _ -> Error(InvalidChannels)
   }
 }
 
 fn convert_sample_rate(bits: BitArray) -> Result(Int, ReadChunkError) {
   case bits {
-    <<val:little>> -> Ok(val)
+    <<val:size(32)-little>> -> Ok(val)
     _ -> Error(InvalidSampleRate)
   }
 }
 
 fn convert_bytes_per_second(bits: BitArray) -> Result(Int, ReadChunkError) {
   case bits {
-    <<val:little>> -> Ok(val)
+    <<val:size(32)-little>> -> Ok(val)
     _ -> Error(InvalidBytesPerSecond)
   }
 }
 
 fn convert_block_align(bits: BitArray) -> Result(Int, ReadChunkError) {
   case bits {
-    <<val:little>> -> Ok(val)
+    <<val:size(16)-little>> -> Ok(val)
     _ -> Error(InvalidBlockAlign)
   }
 }
 
 fn convert_bits(bits: BitArray) -> Result(Bits, ReadChunkError) {
   case bits {
-    <<val:little>> ->
+    <<val:size(16)-little>> ->
       case val {
         8 -> Ok(U8)
         16 -> Ok(I16)
@@ -219,14 +219,13 @@ fn read_data_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
   Ok(Data(data_bits: data))
 }
 
-// パーサー関数を修正
 fn parse_u8_samples(data: BitArray) -> List(Float) {
   do_parse_u8_samples(data, [])
 }
 
 fn do_parse_u8_samples(data: BitArray, acc: List(Float)) -> List(Float) {
   case data {
-    <<val:8-unsigned, rest:bits>> -> {
+    <<val:size(8)-unsigned, rest:bits>> -> {
       let normalized = { int.to_float(val) -. 128.0 } /. 128.0
       do_parse_u8_samples(rest, [normalized, ..acc])
     }
@@ -240,7 +239,7 @@ fn parse_i16_samples(data: BitArray) -> List(Float) {
 
 fn do_parse_i16_samples(data: BitArray, acc: List(Float)) -> List(Float) {
   case data {
-    <<val:16-signed-little, rest:bits>> -> {
+    <<val:size(16)-signed-little, rest:bits>> -> {
       let normalized = int.to_float(val) /. 32_768.0
       do_parse_i16_samples(rest, [normalized, ..acc])
     }
@@ -254,7 +253,7 @@ fn parse_i24_samples(data: BitArray) -> List(Float) {
 
 fn do_parse_i24_samples(data: BitArray, acc: List(Float)) -> List(Float) {
   case data {
-    <<val:24-signed-little, rest:bits>> -> {
+    <<val:size(24)-signed-little, rest:bits>> -> {
       let normalized = int.to_float(val) /. 8_388_608.0
       do_parse_i24_samples(rest, [normalized, ..acc])
     }
@@ -268,7 +267,7 @@ fn parse_f32_samples(data: BitArray) -> List(Float) {
 
 fn do_parse_f32_samples(data: BitArray, acc: List(Float)) -> List(Float) {
   case data {
-    <<val:32-float-little, rest:bits>> -> {
+    <<val:size(32)-float-little, rest:bits>> -> {
       do_parse_f32_samples(rest, [val, ..acc])
     }
     _ -> list.reverse(acc)
