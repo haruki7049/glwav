@@ -339,7 +339,6 @@ pub fn to_bit_array(wave: Wave) -> BitArray {
 
 fn samples_to_u8(samples: List(Float)) -> BitArray {
   samples
-  |> list.reverse()
   |> list.fold(<<>>, fn(acc, sample) {
     let value = { sample *. 128.0 +. 128.0 }
     let int_value = case value {
@@ -353,7 +352,6 @@ fn samples_to_u8(samples: List(Float)) -> BitArray {
 
 fn samples_to_i16(samples: List(Float)) -> BitArray {
   samples
-  |> list.reverse()
   |> list.fold(<<>>, fn(acc, sample) {
     let value = sample *. 32_768.0
     let int_value = case value {
@@ -367,7 +365,6 @@ fn samples_to_i16(samples: List(Float)) -> BitArray {
 
 fn samples_to_i24(samples: List(Float)) -> BitArray {
   samples
-  |> list.reverse()
   |> list.fold(<<>>, fn(acc, sample) {
     let value = sample *. 8_388_608.0
     let int_value = case value {
@@ -381,7 +378,6 @@ fn samples_to_i24(samples: List(Float)) -> BitArray {
 
 fn samples_to_f32(samples: List(Float)) -> BitArray {
   samples
-  |> list.reverse()
   |> list.fold(<<>>, fn(acc, sample) {
     <<acc:bits, sample:size(32)-float-little>>
   })
