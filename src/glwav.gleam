@@ -273,3 +273,7 @@ fn do_parse_f32_samples(data: BitArray, acc: List(Float)) -> List(Float) {
     _ -> list.reverse(acc)
   }
 }
+
+pub fn to_bit_array(wave: Wave) -> BitArray {
+  todo
+}
