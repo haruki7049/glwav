@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/bit_array
 import gleam/list
 import gleam/result
@@ -44,7 +45,7 @@ pub type ChunkData {
     block_align: Int,
     bits: Bits,
   )
-  Data(samples: List(Float))
+  Data(data_bits: BitArray)
 }
 
 pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
@@ -66,6 +67,7 @@ pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
           }
         })
 
+      // from_bit_array 関数の todo 部分
       case chunk_data {
         [
           Ok(Fmt(
@@ -76,18 +78,26 @@ pub fn from_bit_array(bits: BitArray) -> Result(Wave, FromBitArrayError) {
             block_align,
             bits,
           )),
-          Ok(Data(samples)),
+          Ok(Data(data_bits)),
           ..
-        ] ->
+        ] -> {
+          let samples = case bits {
+            U8 -> parse_u8_samples(data_bits)
+            I16 -> parse_i16_samples(data_bits)
+            I24 -> parse_i24_samples(data_bits)
+            F32 -> parse_f32_samples(data_bits)
+          }
+
           Ok(Wave(
-            format_code,
-            sample_rate,
-            channels,
-            bits,
-            bytes_per_second,
-            block_align,
-            samples,
+            format_code: format_code,
+            sample_rate: sample_rate,
+            channels: channels,
+            bits: bits,
+            bytes_per_second: bytes_per_second,
+            block_align: block_align,
+            samples: samples,
           ))
+        }
         _ -> Error(InvalidFormat)
       }
     }
@@ -156,10 +166,6 @@ fn read_fmt_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
   ))
 }
 
-fn read_data_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
-  todo
-}
-
 fn convert_format_code(bits: BitArray) -> Result(FormatCode, ReadChunkError) {
   case bits {
     <<1:size(4)-little>> -> Ok(PCM)
@@ -206,5 +212,65 @@ fn convert_bits(bits: BitArray) -> Result(Bits, ReadChunkError) {
         _ -> Error(InvalidBits)
       }
     _ -> Error(InvalidBits)
+  }
+}
+
+fn read_data_chunk(data: BitArray) -> Result(ChunkData, ReadChunkError) {
+  Ok(Data(data_bits: data))
+}
+
+// パーサー関数を修正
+fn parse_u8_samples(data: BitArray) -> List(Float) {
+  do_parse_u8_samples(data, [])
+}
+
+fn do_parse_u8_samples(data: BitArray, acc: List(Float)) -> List(Float) {
+  case data {
+    <<val:8-unsigned, rest:bits>> -> {
+      let normalized = { int.to_float(val) -. 128.0 } /. 128.0
+      do_parse_u8_samples(rest, [normalized, ..acc])
+    }
+    _ -> list.reverse(acc)
+  }
+}
+
+fn parse_i16_samples(data: BitArray) -> List(Float) {
+  do_parse_i16_samples(data, [])
+}
+
+fn do_parse_i16_samples(data: BitArray, acc: List(Float)) -> List(Float) {
+  case data {
+    <<val:16-signed-little, rest:bits>> -> {
+      let normalized = int.to_float(val) /. 32_768.0
+      do_parse_i16_samples(rest, [normalized, ..acc])
+    }
+    _ -> list.reverse(acc)
+  }
+}
+
+fn parse_i24_samples(data: BitArray) -> List(Float) {
+  do_parse_i24_samples(data, [])
+}
+
+fn do_parse_i24_samples(data: BitArray, acc: List(Float)) -> List(Float) {
+  case data {
+    <<val:24-signed-little, rest:bits>> -> {
+      let normalized = int.to_float(val) /. 8_388_608.0
+      do_parse_i24_samples(rest, [normalized, ..acc])
+    }
+    _ -> list.reverse(acc)
+  }
+}
+
+fn parse_f32_samples(data: BitArray) -> List(Float) {
+  do_parse_f32_samples(data, [])
+}
+
+fn do_parse_f32_samples(data: BitArray, acc: List(Float)) -> List(Float) {
+  case data {
+    <<val:32-float-little, rest:bits>> -> {
+      do_parse_f32_samples(rest, [val, ..acc])
+    }
+    _ -> list.reverse(acc)
   }
 }
